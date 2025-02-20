@@ -1,7 +1,10 @@
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 import { ElevenLabsClient } from "elevenlabs";
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"; // Replace with your preferred voice ID
 
 export default async function handler(req, res) {
@@ -15,12 +18,15 @@ export default async function handler(req, res) {
     // Step 1: Preprocess the code (remove comments and unnecessary symbols)
     const cleanedCode = removeCommentsAndSymbols(code);
 
-    // Step 2: Use Groq's LLaMA to generate an explanation
+    // ✅ Step 2: Use Groq's LLaMA to generate an explanation
     const explanation = await getCodeExplanation(cleanedCode);
 
-    // Step 3: Convert explanation to speech and stream it directly
-    res.setHeader("Content-Type", "audio/mpeg");
-    await streamSpeechWithElevenLabs(explanation, res);
+    // Step 3: Convert the explanation to speech using ElevenLabs
+    const audioFilePath = `/tmp/explanation.mp3`; // Vercel supports /tmp directory
+    await generateSpeechWithElevenLabs(explanation, audioFilePath);
+
+    // Step 4: Return the URL of the audio file
+    res.status(200).json({ audioUrl: `/api/audio?file=explanation.mp3` });
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -34,9 +40,9 @@ function removeCommentsAndSymbols(code) {
   return code.trim();
 }
 
+// ✅ Step 2: Function to generate an explanation using Groq API
 async function getCodeExplanation(code) {
   const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-  const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
   try {
     const response = await axios.post(
@@ -64,7 +70,8 @@ async function getCodeExplanation(code) {
   }
 }
 
-async function streamSpeechWithElevenLabs(text, res) {
+// Step 3: Convert explanation text to speech
+async function generateSpeechWithElevenLabs(text, outputPath) {
   const client = new ElevenLabsClient({ apiKey: ELEVENLABS_API_KEY });
 
   try {
@@ -74,14 +81,16 @@ async function streamSpeechWithElevenLabs(text, res) {
       output_format: "mp3_44100_128",
     });
 
-    // Stream audio data to client
-    for await (const chunk of response) {
-      res.write(chunk);
-    }
+    // Write to file directly
+    const writer = fs.createWriteStream(outputPath);
+    response.pipe(writer);
 
-    res.end();
+    return new Promise((resolve, reject) => {
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+    });
   } catch (error) {
     console.error('ElevenLabs API Error:', error.message);
-    res.status(500).json({ message: 'Failed to generate speech' });
+    throw new Error('Failed to generate speech');
   }
 }
