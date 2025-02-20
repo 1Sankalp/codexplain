@@ -1,6 +1,4 @@
 import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
 import { ElevenLabsClient } from "elevenlabs";
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
@@ -20,13 +18,9 @@ export default async function handler(req, res) {
     // Step 2: Use Groq's LLaMA to generate an explanation
     const explanation = await getCodeExplanation(cleanedCode);
 
-    // Step 3: Convert the explanation to speech using ElevenLabs
-    const audioFilePath = path.join(process.cwd(), 'tmp', 'explanation.mp3');
-    await generateSpeechWithElevenLabs(explanation, audioFilePath);
-
-    // Step 4: Return the URL of the audio file
-    const audioUrl = `${req.headers.origin}/explanation.mp3`;
-    res.status(200).json({ audioUrl });
+    // Step 3: Convert explanation to speech and stream it directly
+    res.setHeader("Content-Type", "audio/mpeg");
+    await streamSpeechWithElevenLabs(explanation, res);
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -70,7 +64,7 @@ async function getCodeExplanation(code) {
   }
 }
 
-async function generateSpeechWithElevenLabs(text, outputPath) {
+async function streamSpeechWithElevenLabs(text, res) {
   const client = new ElevenLabsClient({ apiKey: ELEVENLABS_API_KEY });
 
   try {
@@ -80,17 +74,14 @@ async function generateSpeechWithElevenLabs(text, outputPath) {
       output_format: "mp3_44100_128",
     });
 
-    // Convert the response (stream) to a Buffer
-    const chunks = [];
+    // Stream audio data to client
     for await (const chunk of response) {
-      chunks.push(chunk);
+      res.write(chunk);
     }
-    const audioBuffer = Buffer.concat(chunks);
 
-    // Write to file
-    fs.writeFileSync(outputPath, audioBuffer);
+    res.end();
   } catch (error) {
     console.error('ElevenLabs API Error:', error.message);
-    throw new Error('Failed to generate speech');
+    res.status(500).json({ message: 'Failed to generate speech' });
   }
 }
