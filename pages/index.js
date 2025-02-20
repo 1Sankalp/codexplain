@@ -38,7 +38,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-6">
-      <h1 className="text-4xl font-bold text-gray-900 mb-2">Code Explainer 🚀</h1>
+      <h1 className="text-4xl font-bold text-gray-900 mb-2">AI Code Explainer 🚀</h1>
       <p className="text-gray-600 mb-6 text-lg">Paste your code, and get an audio explanation of what it does.</p>
 
       <div className="w-full max-w-2xl bg-white p-6 rounded-2xl shadow-lg">
