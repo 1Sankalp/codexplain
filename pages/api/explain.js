@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     const explanation = await getCodeExplanation(cleanedCode);
 
     // Step 3: Convert the explanation to speech using ElevenLabs
-    const audioFilePath = path.join(process.cwd(), 'public', 'explanation.mp3');
+    const audioFilePath = path.join(process.cwd(), 'tmp', 'explanation.mp3');
     await generateSpeechWithElevenLabs(explanation, audioFilePath);
 
     // Step 4: Return the URL of the audio file
