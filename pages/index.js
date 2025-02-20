@@ -58,9 +58,20 @@ export default function Home() {
           {isLoading ? "Explaining..." : "Explain Code"}
         </button>
       </div>
-      <div>
-        <text>Made with ❤️ by</text><a href="https://github.com/1sankalp">Sankalp</a>
-      </div>
+      {/* ❤️ Footer */}
+      <p className="mt-4 text-gray-500">
+        Made with ❤️ by{" "}
+        <a
+          href="https://github.com/1sankalp"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-600 font-semibold hover"
+        >
+          Sankalp
+        </a>
+      </p>
+
+      
 
       {audioUrl && (
         <div className="mt-6 w-full max-w-2xl bg-white p-4 rounded-lg shadow">
