@@ -24,9 +24,14 @@ export default async function handler(req, res) {
     const audioFilePath = path.join('/tmp', 'explanation.mp3');
     await generateSpeechWithElevenLabs(explanation, audioFilePath);
 
-    // Step 4: Return the URL of the audio file
-    const audioUrl = `${req.headers.origin}/explanation.mp3`;
-    res.status(200).json({ audioUrl });
+    // Step 4: Send the audio response
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Content-Disposition", "inline; filename=explanation.mp3");
+    res.send(fs.readFileSync(audioFilePath));
+
+    // ✅ Step 5: Delete the file after sending the response
+    fs.unlinkSync(audioFilePath);
+    
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -74,12 +79,6 @@ async function generateSpeechWithElevenLabs(text, outputPath) {
   const client = new ElevenLabsClient({ apiKey: ELEVENLABS_API_KEY });
 
   try {
-
-    // ✅ Ensure previous file is deleted before writing a new one
-    if (fs.existsSync(outputPath)) {
-      fs.unlinkSync(outputPath);
-    }
-    
     const response = await client.textToSpeech.convert(VOICE_ID, {
       text,
       model_id: "eleven_multilingual_v2",
