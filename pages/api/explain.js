@@ -1,4 +1,6 @@
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 import { ElevenLabsClient } from "elevenlabs";
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
@@ -12,20 +14,19 @@ export default async function handler(req, res) {
   const { code } = req.body;
 
   try {
-    // Step 1: Preprocess the code
+    // Step 1: Preprocess the code (remove comments and unnecessary symbols)
     const cleanedCode = removeCommentsAndSymbols(code);
 
     // Step 2: Use Groq's LLaMA to generate an explanation
     const explanation = await getCodeExplanation(cleanedCode);
 
     // Step 3: Convert the explanation to speech using ElevenLabs
-    const audioBuffer = await generateSpeechWithElevenLabs(explanation);
+    const audioFilePath = path.join('/tmp', 'explanation.mp3');
+    await generateSpeechWithElevenLabs(explanation, audioFilePath);
 
-    // Step 4: Send the audio as a response directly from memory
-    res.setHeader("Content-Type", "audio/mpeg");
-    res.setHeader("Content-Disposition", "inline; filename=explanation.mp3");
-    res.send(audioBuffer);
-
+    // Step 4: Return the URL of the audio file
+    const audioUrl = `${req.headers.origin}/explanation.mp3`;
+    res.status(200).json({ audioUrl });
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -39,7 +40,6 @@ function removeCommentsAndSymbols(code) {
   return code.trim();
 }
 
-// Function to get code explanation using Groq API
 async function getCodeExplanation(code) {
   const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
   const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -70,26 +70,33 @@ async function getCodeExplanation(code) {
   }
 }
 
-// Function to generate speech from text using ElevenLabs API
-async function generateSpeechWithElevenLabs(text) {
+async function generateSpeechWithElevenLabs(text, outputPath) {
   const client = new ElevenLabsClient({ apiKey: ELEVENLABS_API_KEY });
 
   try {
+
+    // ✅ Ensure previous file is deleted before writing a new one
+    if (fs.existsSync(outputPath)) {
+      fs.unlinkSync(outputPath);
+    }
+    
     const response = await client.textToSpeech.convert(VOICE_ID, {
       text,
       model_id: "eleven_multilingual_v2",
       output_format: "mp3_44100_128",
     });
 
-    // Collect audio chunks
+    // Convert the response (stream) to a Buffer
     const chunks = [];
     for await (const chunk of response) {
       chunks.push(chunk);
     }
+    const audioBuffer = Buffer.concat(chunks);
 
-    // Return the audio buffer instead of writing to file
-    return Buffer.concat(chunks);
-
+    // Write to file
+    fs.writeFileSync(outputPath, audioBuffer);
+    return outputPath;
+    
   } catch (error) {
     console.error('ElevenLabs API Error:', error.message);
     throw new Error('Failed to generate speech');
