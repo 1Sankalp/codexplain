@@ -74,6 +74,12 @@ async function generateSpeechWithElevenLabs(text, outputPath) {
   const client = new ElevenLabsClient({ apiKey: ELEVENLABS_API_KEY });
 
   try {
+
+    // ✅ Ensure previous file is deleted before writing a new one
+    if (fs.existsSync(outputPath)) {
+      fs.unlinkSync(outputPath);
+    }
+    
     const response = await client.textToSpeech.convert(VOICE_ID, {
       text,
       model_id: "eleven_multilingual_v2",
