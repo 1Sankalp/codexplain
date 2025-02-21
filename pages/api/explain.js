@@ -24,14 +24,20 @@ export default async function handler(req, res) {
     const audioFilePath = path.join('/tmp', 'explanation.mp3');
     await generateSpeechWithElevenLabs(explanation, audioFilePath);
 
-    // Step 4: Send the audio response
+    // Step 4: Stream the audio file to the response
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Content-Disposition", "inline; filename=explanation.mp3");
-    res.send(fs.readFileSync(audioFilePath));
 
-    // ✅ Step 5: Delete the file after sending the response
-    fs.unlinkSync(audioFilePath);
-    
+    const audioStream = fs.createReadStream(audioFilePath);
+    audioStream.pipe(res);
+
+    // ✅ Step 5: Delete the file **after streaming is done**
+    audioStream.on("close", () => {
+      fs.unlink(audioFilePath, (err) => {
+        if (err) console.error("Failed to delete file:", err);
+      });
+    });
+
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ message: 'Internal server error' });
