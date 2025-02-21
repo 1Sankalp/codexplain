@@ -50,10 +50,11 @@ async function getCodeExplanation(code) {
       {
         model: 'llama-3.3-70b-versatile',
         messages: [
-          { role: 'system', content: 'You are a helpful code explainer. Explain the following code in simple terms, ignoring comments and unnecessary symbols:' },
-          { role: 'user', content: code },
+          { role: 'system', content: 'You are a helpful code explainer. First, detect the programming language of the following code. Then, explain it in simple terms while maintaining technical accuracy, ignoring comments and unnecessary symbols:' },
+          { role: 'user', content: `Code:\n\n${code}\n\nWhat language is this? Explain it step by step.` },
         ],
-        max_tokens: 150,
+        max_tokens: 300,
+        temperature: 0.7, 
       },
       {
         headers: {
