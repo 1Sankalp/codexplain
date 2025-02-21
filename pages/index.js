@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import hljs from "highlight.js";
-import "highlight.js/styles/github.css"; // Light theme for syntax highlighting
+import "highlight.js/styles/github.css"; // Light theme for syntax highlightings
 
 export default function Home() {
   const [code, setCode] = useState("");
