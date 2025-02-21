@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
     // Step 3: Convert the explanation to speech using ElevenLabs
     const timestamp = Date.now(); // Unique timestamp to break cache
-    const audioFilePath = path.join('/tmp', 'explanation.mp3');
+    const audioFilePath = path.join('/tmp', `explanation_${timestamp}.mp3`);
     await generateSpeechWithElevenLabs(explanation, audioFilePath);
 
     // Step 4: Return the URL of the audio file
@@ -97,6 +97,10 @@ async function generateSpeechWithElevenLabs(text, outputPath) {
       chunks.push(chunk);
     }
     const audioBuffer = Buffer.concat(chunks);
+    
+    if (audioBuffer.length === 0) {
+      throw new Error("Empty audio buffer received");
+    }
 
     // Write to file
     fs.writeFileSync(outputPath, audioBuffer);
