@@ -21,12 +21,11 @@ export default async function handler(req, res) {
     const explanation = await getCodeExplanation(cleanedCode);
 
     // Step 3: Convert the explanation to speech using ElevenLabs
-    const timestamp = Date.now(); // Unique timestamp to break cache
-    const audioFilePath = path.join('/tmp', `explanation_${timestamp}.mp3`);
+    const audioFilePath = path.join('/tmp', 'explanation.mp3');
     await generateSpeechWithElevenLabs(explanation, audioFilePath);
 
     // Step 4: Return the URL of the audio file
-    const audioUrl = `${req.headers.origin}/api/audio?file=explanation_${timestamp}.mp3`;
+    const audioUrl = `${req.headers.origin}/explanation.mp3`;
     res.status(200).json({ audioUrl });
   } catch (error) {
     console.error('Error:', error);
@@ -77,13 +76,6 @@ async function generateSpeechWithElevenLabs(text, outputPath) {
 
   try {
 
-    // Delete old files in /tmp if they exist
-    fs.readdirSync('/tmp').forEach(file => {
-      if (file.startsWith("explanation_")) {
-        fs.unlinkSync(path.join('/tmp', file));
-      }
-    });
-
     
     const response = await client.textToSpeech.convert(VOICE_ID, {
       text,
@@ -97,10 +89,6 @@ async function generateSpeechWithElevenLabs(text, outputPath) {
       chunks.push(chunk);
     }
     const audioBuffer = Buffer.concat(chunks);
-    
-    if (audioBuffer.length === 0) {
-      throw new Error("Empty audio buffer received");
-    }
 
     // Write to file
     fs.writeFileSync(outputPath, audioBuffer);
