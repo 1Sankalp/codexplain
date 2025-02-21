@@ -24,14 +24,20 @@ export default async function handler(req, res) {
     const audioFilePath = path.join('/tmp', 'explanation.mp3');
     await generateSpeechWithElevenLabs(explanation, audioFilePath);
 
-    // Step 4: Stream the audio file to the response
+    // **Check if file exists**
+    if (!fs.existsSync(audioFilePath)) {
+      console.error("File was not saved!");
+      return res.status(500).json({ message: "Audio file was not created" });
+    }
+
+    console.log("File exists, sending response...");
+
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Content-Disposition", "inline; filename=explanation.mp3");
 
     const audioStream = fs.createReadStream(audioFilePath);
     audioStream.pipe(res);
 
-    // ✅ Step 5: Delete the file **after streaming is done**
     audioStream.on("close", () => {
       fs.unlink(audioFilePath, (err) => {
         if (err) console.error("Failed to delete file:", err);
@@ -98,8 +104,11 @@ async function generateSpeechWithElevenLabs(text, outputPath) {
     }
     const audioBuffer = Buffer.concat(chunks);
 
+    console.log("Audio buffer size:", audioBuffer.length);
+
     // Write to file
     fs.writeFileSync(outputPath, audioBuffer);
+    console.log(`Audio file saved at: ${outputPath}`);
     return outputPath;
     
   } catch (error) {
