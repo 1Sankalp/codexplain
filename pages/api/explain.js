@@ -21,11 +21,12 @@ export default async function handler(req, res) {
     const explanation = await getCodeExplanation(cleanedCode);
 
     // Step 3: Convert the explanation to speech using ElevenLabs
-    const audioFilePath = path.join('/tmp', 'explanation.mp3');
+    const timestamp = Date.now();
+    const audioFilePath = path.join('/tmp', `explanation_${timestamp}.mp3`);
     await generateSpeechWithElevenLabs(explanation, audioFilePath);
 
     // Step 4: Return the URL of the audio file
-    const audioUrl = `${req.headers.origin}/explanation.mp3`;
+    const audioUrl = `${req.headers.origin}/api/audio?file=explanation_${timestamp}.mp3`;
     res.status(200).json({ audioUrl });
   } catch (error) {
     console.error('Error:', error);
@@ -75,7 +76,10 @@ async function generateSpeechWithElevenLabs(text, outputPath) {
   const client = new ElevenLabsClient({ apiKey: ELEVENLABS_API_KEY });
 
   try {
-
+    // Delete existing audio file before generating a new one
+    if (fs.existsSync(outputPath)) {
+      fs.unlinkSync(outputPath);
+    }
     
     const response = await client.textToSpeech.convert(VOICE_ID, {
       text,
