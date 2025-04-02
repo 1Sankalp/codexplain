@@ -1,9 +1,10 @@
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
-import { ElevenLabsClient } from "elevenlabs";
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+console.log('API Key length:', ELEVENLABS_API_KEY?.length || 0);
+console.log('API Key first 4 chars:', ELEVENLABS_API_KEY?.substring(0, 4) || 'none');
 const VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"; // Replace with your preferred voice ID
 
 export default async function handler(req, res) {
@@ -73,33 +74,48 @@ async function getCodeExplanation(code) {
 }
 
 async function generateSpeechWithElevenLabs(text, outputPath) {
-  const client = new ElevenLabsClient({ apiKey: ELEVENLABS_API_KEY });
-
   try {
     // Delete existing audio file before generating a new one
     if (fs.existsSync(outputPath)) {
       fs.unlinkSync(outputPath);
     }
     
-    const response = await client.textToSpeech.convert(VOICE_ID, {
-      text,
-      model_id: "eleven_multilingual_v2",
-      output_format: "mp3_44100_128",
+    console.log('Making API request to ElevenLabs...');
+    const response = await axios({
+      method: 'POST',
+      url: `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': ELEVENLABS_API_KEY
+      },
+      data: {
+        text: text,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75
+        }
+      },
+      responseType: 'arraybuffer'
     });
 
-    // Convert the response (stream) to a Buffer
-    const chunks = [];
-    for await (const chunk of response) {
-      chunks.push(chunk);
+    if (!response.data) {
+      throw new Error('No response received from ElevenLabs');
     }
-    const audioBuffer = Buffer.concat(chunks);
 
-    // Write to file
-    fs.writeFileSync(outputPath, audioBuffer);
+    // Write the audio buffer to file
+    fs.writeFileSync(outputPath, response.data);
     return outputPath;
     
   } catch (error) {
-    console.error('ElevenLabs API Error:', error.message);
+    console.error('ElevenLabs API Error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+      stack: error.stack
+    });
     throw new Error('Failed to generate speech');
   }
 }
